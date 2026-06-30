@@ -964,48 +964,139 @@ return entry;
 }
 
 function updateBadge() {
-  const n = loadData().length;
-  document.getElementById('regCountDisplay').textContent = n;
+
+onSnapshot(
+    collection(db, "registrations"),
+    (snapshot) => {
+
+        document.getElementById("regCountDisplay").textContent =
+            snapshot.size;
+
+    }
+);
+
 }
 
 /* ── Render admin table ────────────────────────────── */
-function renderAdminTable() {
-  const data = loadData();
-  document.getElementById('statTotal').textContent = data.length;
-  const todayStr = new Date().toLocaleDateString();
-  document.getElementById('statToday').textContent = data.filter(d=>d.submittedAt.includes(todayStr)).length;
-  if (data.length > 0) {
-    const freq = {};
-    data.forEach(d=>{ freq[d.accountType]=(freq[d.accountType]||0)+1; });
-    document.getElementById('statType').textContent = Object.entries(freq).sort((a,b)=>b[1]-a[1])[0][0];
-  } else { document.getElementById('statType').textContent='—'; }
+async function renderAdminTable() {
 
-  const wrap = document.getElementById('adminTableWrap');
-  if (data.length === 0) {
-    wrap.innerHTML='<div class="admin-empty"><div class="admin-empty-icon">📭</div><p>No registrations yet.</p></div>'; return;
-  }
-  wrap.innerHTML=`<table><thead><tr><th>#</th><th>Submitted</th><th>Name</th><th>Email</th><th>Phone</th><th>Username</th><th>Type</th><th>Avatar</th><th>Country</th><th>Interests</th><th>NL</th><th></th></tr></thead><tbody>
-    ${data.map((e,i)=>`<tr>
-      <td style="color:var(--text-muted)">${i+1}</td>
-      <td style="color:var(--text-muted);font-size:0.72rem;white-space:nowrap">${e.submittedAt}</td>
-      <td><strong>${e.firstName} ${e.lastName}</strong></td>
-      <td style="color:var(--text-secondary)">${e.email}</td>
-      <td style="color:var(--text-secondary)">${e.phone}</td>
-      <td><span class="pill">${e.username}</span></td>
-      <td>${e.accountType}</td>
-      <td style="font-size:1.3rem">${e.avatar}</td>
-      <td style="color:var(--text-secondary)">${e.country}</td>
-      <td style="color:var(--text-secondary);font-size:0.75rem;max-width:120px">${e.interests}</td>
-      <td style="text-align:center">${e.newsletter==='Yes'?'✅':'—'}</td>
-      <td><button class="delete-row-btn" onclick="deleteEntry(${e.id})" title="Delete">🗑️</button></td>
-    </tr>`).join('')}
-  </tbody></table>`;
+const data = await loadData();
+
+document.getElementById('statTotal').textContent = data.length;
+
+const todayStr = new Date().toLocaleDateString();
+
+document.getElementById('statToday').textContent =
+data.filter(d =>
+    (d.submittedAt || "").includes(todayStr)
+).length;
+
+if (data.length > 0) {
+
+    const freq = {};
+
+    data.forEach(d => {
+        freq[d.accountType] = (freq[d.accountType] || 0) + 1;
+    });
+
+    document.getElementById('statType').textContent =
+        Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];
+
+} else {
+
+    document.getElementById('statType').textContent = '—';
+
 }
 
-function deleteEntry(id) {
-  saveData(loadData().filter(e=>e.id!==id));
-  updateBadge(); renderAdminTable();
-  showToast('🗑️ Entry deleted.','info');
+const wrap = document.getElementById('adminTableWrap');
+
+if (data.length === 0) {
+
+    wrap.innerHTML =
+        '<div class="admin-empty"><div class="admin-empty-icon">📭</div><p>No registrations yet.</p></div>';
+
+    return;
+}
+
+wrap.innerHTML = `
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Submitted</th>
+<th>Name</th>
+<th>Email</th>
+<th>Phone</th>
+<th>Username</th>
+<th>Type</th>
+<th>Avatar</th>
+<th>Country</th>
+<th>Interests</th>
+<th>NL</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody>
+
+${data.map((e,i)=>`
+
+<tr>
+
+<td>${i+1}</td>
+
+<td>${e.submittedAt}</td>
+
+<td>${e.firstName} ${e.lastName}</td>
+
+<td>${e.email}</td>
+
+<td>${e.phone}</td>
+
+<td>${e.username}</td>
+
+<td>${e.accountType}</td>
+
+<td>${e.avatar}</td>
+
+<td>${e.country}</td>
+
+<td>${e.interests}</td>
+
+<td>${e.newsletter}</td>
+
+<td>
+
+<button class="delete-row-btn"
+onclick="deleteEntry('${e.id}')">
+
+🗑️
+
+</button>
+
+</td>
+
+</tr>
+
+`).join('')}
+
+</tbody>
+
+</table>`;
+}
+
+async function deleteEntry(id) {
+
+await deleteDoc(
+    doc(db, "registrations", id)
+);
+
+await renderAdminTable();
+
+await updateBadge();
+
+showToast('🗑️ Entry deleted.', 'info');
+
 }
 function clearAllData() {
   if (!confirm('Delete ALL registration data? This cannot be undone.')) return;
@@ -1131,8 +1222,10 @@ window.openLogin = openLogin;
 window.closeAdminOnOverlay = closeAdminOnOverlay;
 window.toggleChangePwd = toggleChangePwd;
 window.changeAdminPassword = changeAdminPassword;
-window.checkStrength  = checkStrength ;
-window.resetForm   = resetForm  ;
+window.checkStrength = checkStrength ;
+window.resetForm = resetForm  ;
+window.checkAdminLogin = checkAdminLogin ;
+window.deleteEntry  = deleteEntry  ;
 </script>
 </body>
 </html>

@@ -624,10 +624,59 @@
 <!-- Secret hover zone (bottom-right corner — invisible to public) -->
 <div class="secret-hint" title="" onclick="openLogin()"></div>
 
-<!-- ══════════════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════════════ -->
-<script>
+<script type="module">
+
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+  
+  import {
+    getFirestore,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    writeBatch
+  } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+  
+  const firebaseConfig = {
+    apiKey: "AIzaSyBLPvetKSy1SWvK6anw4mV5-5Yg3xy7bSk",
+    authDomain: "multi-setp-form.firebaseapp.com",
+    projectId: "multi-setp-form",
+    storageBucket: "multi-setp-form.firebasestorage.app",
+    messagingSenderId: "388057673806",
+    appId: "1:388057673806:web:d2d8c2b7455b5efd41531f"
+  };
+  
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  
+  // Global
+  window.db = db;
+  window.collection = collection;
+  window.addDoc = addDoc;
+  window.getDocs = getDocs;
+  window.deleteDoc = deleteDoc;
+  window.doc = doc;
+  window.onSnapshot = onSnapshot;
+  window.writeBatch = writeBatch;
+
+  window.firebaseDB = {
+    db,
+    collection,
+    addDoc,
+    getDocs,
+    deleteDoc,
+    doc,
+    onSnapshot,
+    writeBatch
+};
+  
+ 
+  
+
+
+
 /* ── Constants & Config ────────────────────────────── */
 const STORAGE_KEY    = 'novaauth_registrations';
 const PWD_KEY        = 'novaauth_admin_pwd';
@@ -829,29 +878,89 @@ document.addEventListener('keydown', e => {
 });
 
 /* ── localStorage helpers ──────────────────────────── */
-function loadData() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); } catch { return []; } }
-function saveData(arr) { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+// function loadData() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]'); } catch { return []; } }
+// function saveData(arr) { localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+
+async function loadData() {
+
+  const snapshot = await window.getDocs(
+    window.collection(window.db, "registrations")
+);
+
+return snapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+}));
+
+}
 
 /* ── Save registration ─────────────────────────────── */
-function saveRegistration() {
-  const g   = id => document.getElementById(id)?.value?.trim()||'';
-  const interests = [...document.querySelectorAll('input[name="interests"]:checked')].map(i=>i.value).join(', ');
-  const avatar    = document.querySelector('input[name="avatar"]:checked')?.value||'🦊';
-  const entry = {
-    id:          Date.now(),
+// function saveRegistration() {
+//   const g   = id => document.getElementById(id)?.value?.trim()||'';
+//   const interests = [...document.querySelectorAll('input[name="interests"]:checked')].map(i=>i.value).join(', ');
+//   const avatar    = document.querySelector('input[name="avatar"]:checked')?.value||'🦊';
+//   const entry = {
+//     id:          Date.now(),
+//     submittedAt: new Date().toLocaleString(),
+//     firstName:   g('firstName'), lastName: g('lastName'), email: g('email'),
+//     phone:       g('phone'),     dob:      g('dob'),
+//     username:    g('username'),  accountType: cap(g('accountType')),
+//     avatar,      bio:            g('bio')||'—',
+//     interests:   interests||'None', country: g('country'),
+//     newsletter:  document.getElementById('newsletter')?.checked?'Yes':'No',
+//   };
+//   const data = loadData();
+//   data.push(entry);
+//   saveData(data);
+//   updateBadge();
+//   return entry;
+// }
+
+
+
+async function saveRegistration() {
+
+const g = id => document.getElementById(id)?.value?.trim() || '';
+
+const interests = [...document.querySelectorAll('input[name="interests"]:checked')]
+    .map(i => i.value)
+    .join(', ');
+
+const avatar = document.querySelector('input[name="avatar"]:checked')?.value || '🦊';
+
+const entry = {
+
     submittedAt: new Date().toLocaleString(),
-    firstName:   g('firstName'), lastName: g('lastName'), email: g('email'),
-    phone:       g('phone'),     dob:      g('dob'),
-    username:    g('username'),  accountType: cap(g('accountType')),
-    avatar,      bio:            g('bio')||'—',
-    interests:   interests||'None', country: g('country'),
-    newsletter:  document.getElementById('newsletter')?.checked?'Yes':'No',
-  };
-  const data = loadData();
-  data.push(entry);
-  saveData(data);
-  updateBadge();
-  return entry;
+
+    firstName: g('firstName'),
+    lastName: g('lastName'),
+    email: g('email'),
+    phone: g('phone'),
+    dob: g('dob'),
+
+    username: g('username'),
+    accountType: cap(g('accountType')),
+
+    avatar,
+    bio: g('bio') || '—',
+
+    interests: interests || 'None',
+
+    country: g('country'),
+
+    newsletter: document.getElementById('newsletter')?.checked
+        ? 'Yes'
+        : 'No'
+
+};
+
+await window.addDoc(
+    window.collection(window.db, "registrations"),
+    entry
+);
+
+return entry;
+
 }
 
 function updateBadge() {
@@ -964,20 +1073,29 @@ function togglePwd(id,btn){const i=document.getElementById(id);i.type=i.type==='
 function buildReview(){const g=id=>document.getElementById(id)?.value?.trim()||'—';const avatar=document.querySelector('input[name="avatar"]:checked')?.value||'🦊';const interests=[...document.querySelectorAll('input[name="interests"]:checked')].map(i=>i.value).join(', ')||'None selected';const nl=document.getElementById('newsletter')?.checked?'Yes':'No';document.getElementById('reviewGrid').innerHTML=[{title:'Personal Info',rows:[['Full Name',`${g('firstName')} ${g('lastName')}`],['Email',g('email')],['Phone',g('phone')],['Birthday',fmtDate(g('dob'))]]},{title:'Account',rows:[['Username',g('username')],['Password','••••••••'],['Account Type',cap(g('accountType'))]]},{title:'Profile',rows:[['Avatar',avatar],['Country',g('country')],['Interests',interests],['Newsletter',nl]]},].map(s=>`<div class="review-section"><div class="review-section-title">${s.title}</div>${s.rows.map(([k,v])=>`<div class="review-row"><span class="review-key">${k}</span><span class="review-value">${v}</span></div>`).join('')}</div>`).join('');}
 
 /* ── Submit ────────────────────────────────────────── */
-function submitForm(){
+async function submitForm(){
   if(!document.getElementById('terms').checked){document.getElementById('err-terms').classList.add('show');return;}
   document.getElementById('err-terms').classList.remove('show');
   const btn=document.getElementById('submitBtn');
   btn.innerHTML='<span class="spinner"></span> Saving…'; btn.disabled=true;
-  setTimeout(()=>{
-    saveRegistration();
-    document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
-    document.getElementById('cardHeader').style.display='none';
-    const name=document.getElementById('firstName').value||'there';
-    document.getElementById('successMsg').textContent=`Hey ${name}! Your registration is saved securely.`;
-    document.getElementById('successScreen').classList.add('show');
-    showToast('✅ Registration saved!','success');
-  },1800);
+  setTimeout(async ()=>{
+
+await saveRegistration();
+
+document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+
+document.getElementById('cardHeader').style.display='none';
+
+const name=document.getElementById('firstName').value||'there';
+
+document.getElementById('successMsg').textContent=
+`Hey ${name}! Your registration is saved securely.`;
+
+document.getElementById('successScreen').classList.add('show');
+
+showToast('✅ Registration saved!','success');
+
+},1800);
 }
 
 /* ── Reset form ────────────────────────────────────── */
@@ -999,6 +1117,22 @@ function showToast(msg,type='info'){const t=document.getElementById('toast');t.t
 /* ── Init ──────────────────────────────────────────── */
 updateStepper(0);
 updateBadge();
+
+// ===== Make functions available to HTML =====
+window.nextStep = nextStep;
+window.prevStep = prevStep;
+window.submitForm = submitForm;
+window.togglePwd = togglePwd;
+window.exportExcel = exportExcel;
+window.clearAllData = clearAllData;
+window.adminLogout = adminLogout;
+window.closeAdmin = closeAdmin;
+window.openLogin = openLogin;
+window.closeAdminOnOverlay = closeAdminOnOverlay;
+window.toggleChangePwd = toggleChangePwd;
+window.changeAdminPassword = changeAdminPassword;
+window.checkStrength  = checkStrength ;
+window.resetForm   = resetForm  ;
 </script>
 </body>
 </html>
